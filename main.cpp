@@ -204,6 +204,31 @@ TEST(correctness, ctor_big)
     //any_forward_iterator<int> end = make_throwing_wrapper(a + 5);
 }
 
+TEST(correctness, ctor_move)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+
+    any_forward_iterator<int> i = a.begin() + 3;
+    any_forward_iterator<int> j = std::move(i);
+    EXPECT_EQ(4, *j);
+}
+
+TEST(correctness, relative_ops)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+
+    any_random_access_iterator<int> const i = a.begin() + 1;
+    any_random_access_iterator<int> const j = a.begin() + 3;
+
+    EXPECT_LT(i, j);
+    EXPECT_LE(i, i);
+    EXPECT_GT(j, i);
+    EXPECT_GE(j, j);
+
+    EXPECT_EQ(i, i);
+    EXPECT_NE(i, j);
+}
+
 TEST(correctness, difference)
 {
     std::vector<int> a = {1, 2, 3, 4, 5};

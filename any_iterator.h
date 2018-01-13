@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 
 namespace any_iterator_impl
@@ -633,7 +634,7 @@ struct any_iterator : any_iterator_base<ValueType, Category>
                  typename std::enable_if<
                      std::is_convertible<typename std::iterator_traits<InnerIterator>::iterator_category, Category>::value
                   && !fits_small_storage<InnerIterator> >::type* = nullptr)
-        : ops(make_big_iterator_ops<ValueType, InnerIterator>())
+        : ops(make_inner_iterator_ops<ValueType, InnerIterator>())
     {
         new (&stg) InnerIterator*(new InnerIterator(std::move(ii)));
     }

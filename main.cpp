@@ -254,6 +254,19 @@ TEST(correctness, predec_1)
     EXPECT_EQ(1, *i);
 }
 
+TEST(correctness, assignment)
+{
+    std::forward_list<int> a = {1, 2, 3, 4, 5};
+
+    any_forward_iterator<int> i = make_throwing_wrapper(a.begin());
+    ++i;
+    any_forward_iterator<int> old = i;
+    ++i;
+    ++i;
+    i = old;
+    EXPECT_EQ(*i, 2);
+}
+
 TEST(correctness, list_1)
 {
     std::forward_list<int> a = {1, 2, 3, 4, 5};

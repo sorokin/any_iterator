@@ -315,6 +315,13 @@ TEST(correctness, subscript)
     EXPECT_EQ(3, i[0]);
     EXPECT_EQ(4, i[1]);
     EXPECT_EQ(5, i[2]);
+
+    any_random_access_iterator<int> const j = i;
+    EXPECT_EQ(1, j[-2]);
+    EXPECT_EQ(2, j[-1]);
+    EXPECT_EQ(3, j[0]);
+    EXPECT_EQ(4, j[1]);
+    EXPECT_EQ(5, j[2]);
 }
 
 TEST(correctness, list_1)

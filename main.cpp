@@ -324,6 +324,19 @@ TEST(correctness, subscript)
     EXPECT_EQ(5, j[2]);
 }
 
+TEST(correctness, add_sub)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+
+    any_random_access_iterator<int> i = make_throwing_wrapper(a.begin());
+
+    EXPECT_EQ(&i, &((i += 2) += 2));
+    EXPECT_EQ(5, *i);
+
+    EXPECT_EQ(&i, &((i -= 2) -= 2));
+    EXPECT_EQ(1, *i);
+}
+
 TEST(correctness, list_1)
 {
     std::forward_list<int> a = {1, 2, 3, 4, 5};

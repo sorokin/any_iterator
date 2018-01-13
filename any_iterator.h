@@ -536,7 +536,12 @@ struct any_iterator_base<ValueType, std::forward_iterator_tag>
 template <typename ValueType>
 struct any_iterator_base<ValueType, std::bidirectional_iterator_tag>
 {
-    any_iterator_ops<ValueType, std::bidirectional_iterator_tag> const* get_ops() const
+    any_iterator_ops<ValueType, std::bidirectional_iterator_tag> const*& get_ops()
+    {
+        return static_cast<any_iterator<ValueType, std::bidirectional_iterator_tag>&>(*this).ops;
+    }
+
+    any_iterator_ops<ValueType, std::bidirectional_iterator_tag> const* const& get_ops() const
     {
         return static_cast<any_iterator<ValueType, std::bidirectional_iterator_tag> const&>(*this).ops;
     }
@@ -570,7 +575,12 @@ struct any_iterator_base<ValueType, std::random_access_iterator_tag>
         return *(static_cast<any_iterator<ValueType, std::random_access_iterator_tag> const&>(*this) + n);
     }
 
-    any_iterator_ops<ValueType, std::random_access_iterator_tag> const* get_ops() const
+    any_iterator_ops<ValueType, std::random_access_iterator_tag> const*& get_ops()
+    {
+        return static_cast<any_iterator<ValueType, std::random_access_iterator_tag>&>(*this).ops;
+    }
+
+    any_iterator_ops<ValueType, std::random_access_iterator_tag> const* const& get_ops() const
     {
         return static_cast<any_iterator<ValueType, std::random_access_iterator_tag> const&>(*this).ops;
     }
@@ -733,8 +743,8 @@ typename std::enable_if<
 >::type operator--(any_iterator<ValueType, Category>& it, int)
 {
     any_iterator<ValueType, Category> copy;
-    it.ops->postdec(copy.stg, it.stg);
-    copy.ops = it.ops;
+    it.get_ops()->postdec(copy.get_stg(), it.get_stg());
+    copy.get_ops() = it.get_ops();
     return copy;
 }
 

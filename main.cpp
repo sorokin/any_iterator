@@ -204,6 +204,33 @@ TEST(correctness, ctor_big)
     //any_forward_iterator<int> end = make_throwing_wrapper(a + 5);
 }
 
+TEST(correctness, difference)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+
+    any_random_access_iterator<int> i = a.begin();
+    any_random_access_iterator<int> j = a.end();
+    EXPECT_EQ(5, j - i);
+    ++i;
+    --j;
+    EXPECT_EQ(3, j - i);
+}
+
+TEST(correctness, incdec_big)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+    any_bidirectional_iterator<int> i = make_throwing_wrapper(a.begin());
+    EXPECT_EQ(1, *i);
+    EXPECT_EQ(2, *++i);
+    EXPECT_EQ(2, *i);
+    EXPECT_EQ(2, *i++);
+    EXPECT_EQ(3, *i);
+    EXPECT_EQ(2, *--i);
+    EXPECT_EQ(2, *i);
+    EXPECT_EQ(2, *i--);
+    EXPECT_EQ(1, *i);
+}
+
 TEST(correctness, postinc_1)
 {
     std::list<int> a = {1, 2, 3};

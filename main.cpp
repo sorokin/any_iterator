@@ -152,6 +152,11 @@ struct throwing_wrapper : throwing_wrapper_base
         return lhs.inner > rhs.inner;
     }
 
+    value_type& operator[](std::ptrdiff_t n) const
+    {
+        return inner[n];
+    }
+
 private:
     InnerIterator inner;
 };
@@ -298,6 +303,18 @@ TEST(correctness, assignment)
     ++i;
     i = old;
     EXPECT_EQ(*i, 2);
+}
+
+TEST(correctness, subscript)
+{
+    std::vector<int> a = {1, 2, 3, 4, 5};
+
+    any_random_access_iterator<int> i = make_throwing_wrapper(a.begin() + 2);
+    EXPECT_EQ(1, i[-2]);
+    EXPECT_EQ(2, i[-1]);
+    EXPECT_EQ(3, i[0]);
+    EXPECT_EQ(4, i[1]);
+    EXPECT_EQ(5, i[2]);
 }
 
 TEST(correctness, list_1)

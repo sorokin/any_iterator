@@ -121,17 +121,20 @@ struct any_iterator_ops<ValueType, std::random_access_iterator_tag> : any_iterat
     using sub_t = void (*)(small_storage_type& obj, size_t n);
     using diff_t = std::ptrdiff_t (*)(small_storage_type const& lhs, small_storage_type const& rhs);
     using lt_t = bool (*)(small_storage_type const& lhs, small_storage_type const& rhs);
+    using subscript_t = ValueType& (*)(small_storage_type const& obj, std::ptrdiff_t n);
 
     add_t add;
     sub_t sub;
     diff_t diff;
     lt_t lt;
+    subscript_t subscript;
 
     constexpr any_iterator_ops(copy_t copy, move_t move, assign_t assign,
                                destroy_t destroy,
                                deref_t deref, preinc_t preinc, postinc_t postinc,
                                eq_t eq, predec_t predec, postdec_t postdec,
-                               add_t add, sub_t sub, diff_t diff, lt_t lt)
+                               add_t add, sub_t sub, diff_t diff, lt_t lt,
+                               subscript_t subscript)
         : any_iterator_ops<ValueType, std::bidirectional_iterator_tag>(copy, move, assign,
                                                                        destroy,
                                                                        deref, preinc, postinc,
@@ -140,6 +143,7 @@ struct any_iterator_ops<ValueType, std::random_access_iterator_tag> : any_iterat
         , sub(sub)
         , diff(diff)
         , lt(lt)
+        , subscript(subscript)
     {}
 };
 
@@ -210,6 +214,12 @@ bool null_lt(small_storage_type const&, small_storage_type const&)
 }
 
 template <typename ValueType>
+ValueType& null_subscript(small_storage_type const&, std::ptrdiff_t)
+{
+    throw bad_any_iterator();
+}
+
+template <typename ValueType>
 inline any_iterator_ops<ValueType, std::random_access_iterator_tag> const* make_null_ops()
 {
     static constexpr any_iterator_ops<ValueType, std::random_access_iterator_tag> instance
@@ -231,7 +241,8 @@ inline any_iterator_ops<ValueType, std::random_access_iterator_tag> const* make_
         &null_add,
         &null_sub,
         &null_diff,
-        &null_lt
+        &null_lt,
+        &null_subscript<ValueType>
     );
 
     return &instance;
@@ -397,6 +408,12 @@ bool inner_lt(small_storage_type const& lhs, small_storage_type const& rhs)
     return access<InnerIterator>(lhs) < access<InnerIterator>(rhs);
 }
 
+template <typename ValueType, typename InnerIterator>
+ValueType& inner_subscript(small_storage_type const& obj, std::ptrdiff_t n)
+{
+    return access<InnerIterator>(obj)[n];
+}
+
 template <typename ValueType, typename InnerIterator, typename IteratorCategory>
 struct iterator_ops_impl;
 
@@ -460,7 +477,8 @@ struct iterator_ops_impl<ValueType, InnerIterator, std::random_access_iterator_t
             &inner_add<InnerIterator>,
             &inner_sub<InnerIterator>,
             &inner_diff<InnerIterator>,
-            &inner_lt<InnerIterator>
+            &inner_lt<InnerIterator>,
+            &inner_subscript<ValueType, InnerIterator>,
         };
     }
 };
@@ -572,7 +590,7 @@ struct any_iterator_base<ValueType, std::random_access_iterator_tag>
 {
     ValueType& operator[](std::ptrdiff_t n) const
     {
-        return *(static_cast<any_iterator<ValueType, std::random_access_iterator_tag> const&>(*this) + n);
+        return get_ops()->subscript(get_stg(), n);
     }
 
     any_iterator_ops<ValueType, std::random_access_iterator_tag> const*& get_ops()

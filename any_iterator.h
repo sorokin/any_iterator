@@ -669,15 +669,19 @@ struct any_iterator : any_iterator_base<ValueType, Category>
 
     any_iterator& operator=(any_iterator const& rhs)
     {
-        rhs.ops->assign(ops, stg, rhs.stg);
+        if (this != &rhs)
+            rhs.ops->assign(ops, stg, rhs.stg);
         return *this;
     }
 
     any_iterator& operator=(any_iterator&& rhs) noexcept
     {
-        ops->destroy(stg);
-        rhs.ops->move(stg, rhs.stg);
-        rhs.ops = make_null_ops<ValueType>();
+        if (this != &rhs)
+        {
+            ops->destroy(stg);
+            rhs.ops->move(stg, rhs.stg);
+            rhs.ops = make_null_ops<ValueType>();
+        }
         return *this;
     }
 private:

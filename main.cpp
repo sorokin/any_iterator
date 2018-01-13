@@ -197,6 +197,14 @@ TEST(correctness, assign)
     a = b;
 }
 
+TEST(correctness, self_assignment)
+{
+    std::list<int> x = {1, 2, 3};
+    any_forward_iterator<int> a = make_throwing_wrapper(x.begin());
+    a = a;
+    EXPECT_EQ(1, *a);
+}
+
 TEST(correctness, ctor_big)
 {
     int a[5] = {1, 2, 3, 4, 5};

@@ -11,6 +11,8 @@ struct throwing_wrapper_base
 {};
 
 std::set<throwing_wrapper_base*> throwing_wrapper_instances;
+size_t number_of_copies = 0;
+size_t number_of_moves = 0;
 
 template <typename InnerIterator>
 struct throwing_wrapper : throwing_wrapper_base
@@ -37,6 +39,7 @@ struct throwing_wrapper : throwing_wrapper_base
     throwing_wrapper(throwing_wrapper const& other)
         : inner(other.inner)
     {
+        ++number_of_copies;
         bool inserted = throwing_wrapper_instances.insert(this).second;
         assert(inserted);
     }
@@ -44,6 +47,7 @@ struct throwing_wrapper : throwing_wrapper_base
     throwing_wrapper(throwing_wrapper&& other)
         : inner(std::move(other.inner))
     {
+        ++number_of_moves;
         bool inserted = throwing_wrapper_instances.insert(this).second;
         assert(inserted);
     }
@@ -252,6 +256,42 @@ TEST(correctness, difference)
     ++i;
     --j;
     EXPECT_EQ(3, j - i);
+}
+
+TEST(correctness, ctor_lvalue)
+{
+    std::vector<int> a;
+    auto x = make_throwing_wrapper(a.begin());
+
+    size_t old_noc = number_of_copies;
+    any_random_access_iterator<int> y(x);
+    assert((old_noc + 1) == number_of_copies);
+}
+
+TEST(correctness, ctor_rvalue)
+{
+    std::vector<int> a;
+    auto x = make_throwing_wrapper(a.begin());
+
+    size_t old_nom = number_of_moves;
+    any_random_access_iterator<int> y(std::move(x));
+    assert((old_nom + 1) == number_of_moves);
+}
+
+TEST(correctness, conversions)
+{
+    std::vector<int> a = {1, 2, 3};
+    any_random_access_iterator<int> i = a.begin();
+    any_bidirectional_iterator<int> j = i;
+    any_forward_iterator<int> k = j;
+    EXPECT_EQ(1, *k);
+    ++k;
+    EXPECT_EQ(2, *k);
+    ++k;
+    EXPECT_EQ(3, *k);
+
+    static_assert(!std::is_convertible<any_forward_iterator<int>, any_bidirectional_iterator<int>>::value);
+    static_assert(!std::is_convertible<any_bidirectional_iterator<int>, any_random_access_iterator<int>>::value);
 }
 
 TEST(correctness, incdec_big)

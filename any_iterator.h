@@ -22,6 +22,18 @@ struct bad_any_iterator : std::exception
 template <typename ValueType, typename Category>
 struct any_iterator;
 
+template <typename InnerIterator>
+struct is_any_iterator
+{
+    static constexpr bool value = false;
+};
+
+template <typename ValueType, typename Category>
+struct is_any_iterator<any_iterator<ValueType, Category> >
+{
+    static constexpr bool value = true;
+};
+
 constexpr size_t small_storage_size = sizeof(void*);
 constexpr size_t small_storage_alignment = alignof(void*);
 using small_storage_type = std::aligned_storage<small_storage_size, small_storage_alignment>::type;
@@ -249,7 +261,7 @@ inline any_iterator_ops<ValueType, std::random_access_iterator_tag> const* make_
 }
 
 template <typename InnerIterator>
-static constexpr bool fits_small_storage
+constexpr bool fits_small_storage
     = sizeof(InnerIterator) <= small_storage_size
    && alignof(InnerIterator) <= small_storage_alignment
    && std::is_trivially_move_constructible<InnerIterator>::value;
@@ -276,6 +288,22 @@ template <typename InnerIterator>
 typename std::enable_if<!fits_small_storage<InnerIterator>, InnerIterator const&>::type access(small_storage_type const& stg)
 {
     return *reinterpret_cast<InnerIterator* const&>(stg);
+}
+
+template <typename InnerIterator, typename InnerIteratorRef>
+typename std::enable_if<fits_small_storage<InnerIterator>>::type inner_construct(small_storage_type& dst, InnerIteratorRef&& it)
+{
+    static_assert(std::is_same<typename std::decay<InnerIteratorRef>::type, InnerIterator>::value);
+
+    new (&dst) InnerIterator(std::forward<InnerIteratorRef>(it));
+}
+
+template <typename InnerIterator, typename InnerIteratorRef>
+typename std::enable_if<!fits_small_storage<InnerIterator>>::type inner_construct(small_storage_type& dst, InnerIteratorRef&& it)
+{
+    static_assert(std::is_same<typename std::decay<InnerIteratorRef>::type, InnerIterator>::value);
+
+    new (&dst) InnerIterator*(new InnerIterator(std::forward<InnerIteratorRef>(it)));
 }
 
 template <typename InnerIterator>
@@ -647,24 +675,36 @@ struct any_iterator : any_iterator_base<ValueType, Category>
         : ops(make_null_ops<ValueType>())
     {}
 
-    template <typename InnerIterator>
-    any_iterator(InnerIterator ii,
+    template <typename InnerIteratorRef>
+    any_iterator(InnerIteratorRef&& ii,
                  typename std::enable_if<
-                     std::is_convertible<typename std::iterator_traits<InnerIterator>::iterator_category, Category>::value
-                  && fits_small_storage<InnerIterator> >::type* = nullptr)
-        : ops(make_inner_iterator_ops<ValueType, InnerIterator>())
+                     std::is_convertible<typename std::iterator_traits<typename std::decay<InnerIteratorRef>::type>::iterator_category*, Category*>::value
+                  && !is_any_iterator<typename std::decay<InnerIteratorRef>::type>::value
+                 >::type* = nullptr)
+        : ops(make_inner_iterator_ops<ValueType, typename std::decay<InnerIteratorRef>::type>())
     {
-        new (&stg) InnerIterator(std::move(ii));
+        inner_construct<typename std::decay<InnerIteratorRef>::type>(stg, std::forward<InnerIteratorRef>(ii));
     }
 
-    template <typename InnerIterator>
-    any_iterator(InnerIterator ii,
+    template <typename OtherCategory>
+    any_iterator(any_iterator<ValueType, OtherCategory> const& other,
                  typename std::enable_if<
-                     std::is_convertible<typename std::iterator_traits<InnerIterator>::iterator_category, Category>::value
-                  && !fits_small_storage<InnerIterator> >::type* = nullptr)
-        : ops(make_inner_iterator_ops<ValueType, InnerIterator>())
+                     std::is_convertible<OtherCategory*, Category*>::value
+                 >::type* = nullptr)
+        : ops(other.ops)
     {
-        new (&stg) InnerIterator*(new InnerIterator(std::move(ii)));
+        ops->copy(stg, other.stg);
+    }
+
+    template <typename OtherCategory>
+    any_iterator(any_iterator<ValueType, OtherCategory>&& other,
+                 typename std::enable_if<
+                     std::is_convertible<OtherCategory*, Category*>::value
+                 >::type* = nullptr)
+        : ops(other.ops)
+    {
+        ops->move(stg, other.stg);
+        other.ops = make_null_ops<ValueType>();
     }
 
     any_iterator(any_iterator const& other)
@@ -706,6 +746,8 @@ private:
     any_iterator_ops<ValueType, Category> const* ops;
     small_storage_type stg;
 
+    template <typename OtherValueType, typename OtherCategory>
+    friend struct any_iterator;
     friend struct any_iterator_base<ValueType, Category>;
     friend ValueType& operator*<>(any_iterator<ValueType, Category> const&);
     friend any_iterator& operator++<>(any_iterator& it);
